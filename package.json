@@ -1,0 +1,26 @@
+{
+  "name": "webcode-embed",
+  "version": "1.0.0",
+  "description": "A small web component for code demos with fallback in case of disabled JavaScript in browser.",
+  "main": "webcode-embed.js",
+  "scripts": {
+    "start": "npx http-server ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zapalblizh/webcode-embed.git"
+  },
+  "license": "MIT",
+  "publishConfig": {
+      "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/zapalblizh/webcode-embed/issues"
+  },
+  "author": {
+      "name": "Aleksandr Zapparov",
+      "email": "alexander@zapparov.dev",
+      "url": "https://zapparov.dev"
+  },
+  "homepage": "https://github.com/zapalblizh/webcode-embed#readme"
+}
