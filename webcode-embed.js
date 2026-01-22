@@ -24,7 +24,14 @@ class WebCodeEmbed extends HTMLElement {
             <style>
                 .container {
                     padding: 1rem;
-                    background-color: #2e2e2e;
+                    background-color: #3e3e3e;
+                    width: 100%;
+                    height: 100%;
+                }
+                .selections {
+                    display: flex;
+                    width: 100%;
+                    height: 100%;
                 }
                 .file-previews {
                     display: flex;
@@ -46,6 +53,7 @@ class WebCodeEmbed extends HTMLElement {
                     cursor: pointer;
                     text-decoration: none;
                     text-transform: uppercase;
+                    display: block;
                 }
                .btn:hover {
                     opacity: 0.9;
@@ -55,18 +63,48 @@ class WebCodeEmbed extends HTMLElement {
                     background-color: #b3b3b3;
                     color: #000;
                }
+               .code-container {
+                    width: 50%; 
+                    display: flex; 
+                    flex-direction: column;
+                    gap: 8px;
+               }
+               
+               .result {
+                    display: flex;
+               }
+               .result .btn {
+                    border-radius: 2px;
+               }
+               #preview-box{
+                    width: 100% !important;
+                    height: 100% !important;
+               }
+               iframe {
+                    border: 0;
+               }
             </style>
-            <div class="container">
+            <div class="container" style="height: 500px">
                 <div class="selections">
-                    <div class="file-previews">
-                        <a href="#" class="btn">HTML</a>
-                        <a href="#" class="btn">CSS</a>
-                        <a href="#" class="btn">JS</a>
+                    <div class="code-container">
+                        <div class="file-previews">
+                            <a href="#" type="button" class="btn">HTML</a>
+                            <a href="#" type="button" class="btn">CSS</a>
+                            <a href="#" type="button" class="btn">JS</a>
+                        </div>
+                        <pre>
+                            <code>
+                                Hello World
+                            </code>
+                        </pre>
                     </div>
-                    <iframe src=""></iframe>
-                    <iframe src=""></iframe>
-                    <div>
-                        <a href="#" class="btn">CSS</a>
+                    <div class="code-container">
+                        <div class="result">
+                            <a href="#" type="button" class="btn">RESULT</a>
+                        </div>
+                        <div id="preview-box">
+                            <iframe id="preview-box" title="Experiment 2" src="example/example.html" loading="lazy" allowtransparency="true"></iframe>
+                        </div>
                     </div>
                 </div>
             </div>
