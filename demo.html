@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebCode Embed Demo</title>
+    <script type="module" src="webcode-embed.js"></script>
+
+    <style>
+        .cont {
+            display: flex;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebCode Embed Demo</h1>
+
+    <webcode-embed class="cont" style="display: flex;" code-collection="example/example.css" html-preview="example/example.html" >
+        <iframe height="500" style="width: 100%;" title="Experiment" src="example/example.html" loading="lazy" allowtransparency="true"></iframe>
+        <iframe height="500" style="width: 100%;" title="Experiment 2" src="example/example.css" loading="lazy" allowtransparency="true"></iframe>
+    </webcode-embed>
+</body>
+</html>
