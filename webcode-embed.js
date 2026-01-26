@@ -140,8 +140,15 @@ class WebCodeEmbed extends HTMLElement {
                }
                
                pre {
-                    overflow: hidden;
-                    scroll-behavior: smooth;
+                    overflow: auto;
+                    margin: 0;
+                    background: #111;
+                    padding: 12px;
+                    height: 100%;
+               }
+               code {
+                    white-space: pre;
+                    word-wrap: normal;
                }
             </style>
             <div class="container" style="height: 500px">
@@ -150,9 +157,7 @@ class WebCodeEmbed extends HTMLElement {
                         <div class="file-previews">
                             ${buttons}
                         </div>
-                        <pre style="color: white;">
-                            <code>${this.fileContents[0] || ''}</code>
-                        </pre>
+                        <pre style="color: white;"><code></code></pre>
                     </div>
                     <div class="code-container">
                         <div class="result">
@@ -173,6 +178,12 @@ class WebCodeEmbed extends HTMLElement {
         const buttons = this.createButtons();
 
         this.render(buttons);
+
+        // Set initial content using textContent to escape HTML
+        const codeElement = this.shadowRoot.querySelector('pre code');
+        if (codeElement && this.fileContents[0]) {
+            codeElement.textContent = this.fileContents[0];
+        }
 
         this.shadowRoot.querySelector('.file-previews').addEventListener('click', (e) => {
             if (e.target.classList.contains('btn')) {
