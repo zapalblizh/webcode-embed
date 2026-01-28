@@ -15,23 +15,36 @@ class WebCodeEmbed extends HTMLElement {
         this.files = [];
         this.fileTypes = [];
         this.fileContents = [];
-        this.previewFilePath = "";
         this.activeIndex = 0;
 
         this.defaults = {
             breakpoint: '(max-width: 39.9375em)',
-            ratio: "1:1"
+            codePreviewWidth: "50%",
         }
+    }
+
+    escapeHTML(str) {
+        return str.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#039;');
     }
 
     async processFiles() {
         try {
             for (let file of this.files) {
-                this.fileTypes.push(file.slice(file.lastIndexOf('.') + 1))
+                const fileType = file.slice(file.lastIndexOf('.') + 1);
+                this.fileTypes.push(fileType);
+
                 const response = await fetch(file);
                 const content = await response.text();
 
-                this.fileContents.push(content);
+                if (fileType === 'html') {
+                    this.fileContents.push(this.escapeHTML(content));
+                } else {
+                    this.fileContents.push(content);
+                }
             }
         } catch (e) {
             console.warn(`Error processing files: ${e.message}`)
@@ -42,36 +55,34 @@ class WebCodeEmbed extends HTMLElement {
         let buttons = [];
 
         for (let [index, type] of this.fileTypes.entries()) {
-            if (index === 0)
-                buttons.push(`<a href="#" type="button" data-index="${index}" data-type="${type}" class="btn active">${type}</a>`)
+            if (index === this.activeIndex)
+                buttons.push(`<button data-index="${index}" data-type="${type}" class="btn active">${type}</button>`)
             else
-                buttons.push(`<a href="#" type="button" data-index="${index}" data-type="${type}" class="btn">${type}</a>`)
+                buttons.push(`<button data-index="${index}" data-type="${type}" class="btn">${type}</button>`)
         }
 
         return buttons.join('');
     }
 
     toggleButton(clickedButton) {
-        const index = parseInt(clickedButton.dataset.index);
+        this.activeIndex = parseInt(clickedButton.dataset.index);
 
-        // Remove active class from all buttons
+        if (clickedButton.classList.contains('active')) {
+            clickedButton.classList.remove('active');
+            this.shadowRoot.querySelector(`.code-box[data-index="${this.activeIndex}"]`).classList.replace('active', 'hidden');
+            return;
+        }
+
         this.shadowRoot.querySelectorAll('.file-previews .btn').forEach(btn => {
             btn.classList.remove('active');
         });
 
-        // Add active class to clicked button
         clickedButton.classList.add('active');
-
-        // Update active index
-        this.activeIndex = index;
-
-        // Update the code display with the corresponding file content
-        const codeElement = this.shadowRoot.querySelector('pre code');
-
-        codeElement.textContent = this.fileContents[index];
+        this.shadowRoot.querySelector('.code-box.active').classList.replace('active', 'hidden');
+        this.shadowRoot.querySelector(`.code-box[data-index="${this.activeIndex}"]`).classList.replace('hidden', 'active');
     }
 
-    render(buttons) {
+    render(buttons, codeBoxes) {
         this.shadowRoot.innerHTML = `
             <style>
                 .container {
@@ -90,8 +101,12 @@ class WebCodeEmbed extends HTMLElement {
                 }
                 .file-previews {
                     display: flex;
+                    align-items: center;
                     flex-wrap: wrap;
                     gap: 1px;
+                }
+                .file-previews .btn {
+                    text-transform: uppercase;
                 }
                 .file-previews > :first-child {
                     border-radius: 2px 0 0 2px;
@@ -107,14 +122,15 @@ class WebCodeEmbed extends HTMLElement {
                     color: #fff;
                     cursor: pointer;
                     text-decoration: none;
-                    text-transform: uppercase;
                     display: block;
+                    font-family: Arial, sans-serif;
+                    transition: 0.1s ease;
                 }
                .btn:hover {
                     opacity: 0.9;
                }
                .btn.active {
-                    box-shadow: inset 0 4px 0 #ddd;
+                    box-shadow: inset 0 3px 0 #ddd;
                     background-color: #b3b3b3;
                     color: #000;
                }
@@ -123,32 +139,43 @@ class WebCodeEmbed extends HTMLElement {
                     display: flex; 
                     flex-direction: column;
                     gap: 8px;
+                    overflow: hidden;
                }
                
                .result {
                     display: flex;
+                    align-items: center;
                }
                .result .btn {
                     border-radius: 2px;
                }
-               #preview-box{
+               .preview-box {
                     width: 100% !important;
                     height: 100% !important;
                }
                iframe {
                     border: 0;
                }
-               
-               pre {
-                    overflow: auto;
-                    margin: 0;
+               .code-box {
                     background: #111;
+                    color: #fff;
                     padding: 12px;
+                    overflow: auto;
                     height: 100%;
                }
+               .active {
+                    display: block;
+               }
+               pre {
+                    margin: 0;
+               }
                code {
+                    text-wrap: wrap;
                     white-space: pre;
-                    word-wrap: normal;
+               }
+               .btn:active {
+                    -webkit-transform: translateY(1px);
+                    transform: translateY(1px);
                }
             </style>
             <div class="container" style="height: 500px">
@@ -157,14 +184,14 @@ class WebCodeEmbed extends HTMLElement {
                         <div class="file-previews">
                             ${buttons}
                         </div>
-                        <pre style="color: white;"><code></code></pre>
+                        ${codeBoxes}
                     </div>
                     <div class="code-container">
                         <div class="result">
-                            <a href="#" type="button" class="btn">RESULT</a>
+                            <a href="#" type="button" class="btn">Result</a>
                         </div>
-                        <div id="preview-box">
-                            <iframe id="preview-box" title="Experiment 2" src="example/example.html" loading="lazy" allowtransparency="true"></iframe>
+                        <div class="preview-box">
+                            <iframe class="preview-box" title="Experiment 2" src="example/example.html" loading="lazy" allowtransparency="true"></iframe>
                         </div>
                     </div>
                 </div>
@@ -176,14 +203,10 @@ class WebCodeEmbed extends HTMLElement {
         await this.processFiles();
 
         const buttons = this.createButtons();
+        let codeBoxes = this.fileContents.map((content, index) => `<div class="code-box hidden" data-index="${index}"><pre><code>${content}</code></pre></div>`).join('');
+        this.render(buttons, codeBoxes);
 
-        this.render(buttons);
-
-        // Set initial content using textContent to escape HTML
-        const codeElement = this.shadowRoot.querySelector('pre code');
-        if (codeElement && this.fileContents[0]) {
-            codeElement.textContent = this.fileContents[0];
-        }
+        this.shadowRoot.querySelector(`.code-box[data-index="${this.activeIndex}"]`).classList.replace('hidden', 'active');
 
         this.shadowRoot.querySelector('.file-previews').addEventListener('click', (e) => {
             if (e.target.classList.contains('btn')) {
