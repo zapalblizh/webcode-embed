@@ -1,11 +1,17 @@
+import { createHighlighter, codeToHtml} from "shiki/bundle/web";
+
 class WebCodeEmbed extends HTMLElement {
     static get observedAttributes() {
-        return ['files']
+        return ['files', 'theme', 'langs']
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (name === 'files' && newValue)
             this.files = newValue.split(' ').map(file => file.trim());
+        if (name === 'theme' && newValue)
+            this.theme = newValue;
+        if (name === 'langs' && newValue)
+            this.langs = newValue.split(' ').map(lang => lang.trim());
     }
 
     constructor() {
@@ -16,6 +22,9 @@ class WebCodeEmbed extends HTMLElement {
         this.fileTypes = [];
         this.fileContents = [];
         this.activeIndex = 0;
+        this.highlighter = null;
+        this.theme = 'vitesse-dark';
+        this.langs = ['html', 'css', 'javascript'];
 
         this.defaults = {
             breakpoint: '(max-width: 39.9375em)',
@@ -31,7 +40,15 @@ class WebCodeEmbed extends HTMLElement {
                   .replace(/'/g, '&#039;');
     }
 
+    /* Gets all files and stores into a variable */
     async processFiles() {
+
+        // Create highlighter using shiki
+        this.highlighter = await createHighlighter({
+            themes: [this.theme],
+            langs: this.langs,
+        });
+
         try {
             for (let file of this.files) {
                 const fileType = file.slice(file.lastIndexOf('.') + 1);
@@ -40,17 +57,20 @@ class WebCodeEmbed extends HTMLElement {
                 const response = await fetch(file);
                 const content = await response.text();
 
-                if (fileType === 'html') {
-                    this.fileContents.push(this.escapeHTML(content));
-                } else {
-                    this.fileContents.push(content);
-                }
+                /* Highlight code using shiki */
+                const html = this.highlighter.codeToHtml(content, {
+                    lang: fileType,
+                    theme: this.theme,
+                })
+
+                this.fileContents.push(html);
             }
         } catch (e) {
             console.warn(`Error processing files: ${e.message}`)
         }
     }
 
+    /* Creates buttons as html inside array */
     createButtons() {
         let buttons = [];
 
@@ -64,56 +84,98 @@ class WebCodeEmbed extends HTMLElement {
         return buttons.join('');
     }
 
+    /* Function to handle button clicks based on active state for button */
     toggleButton(clickedButton) {
         this.activeIndex = parseInt(clickedButton.dataset.index);
 
-        if (clickedButton.classList.contains('active')) {
-            clickedButton.classList.remove('active');
-            this.shadowRoot.querySelector(`.code-box[data-index="${this.activeIndex}"]`).classList.replace('active', 'hidden');
-            return;
+        let buttonInFileToggle = !!this.shadowRoot.querySelector('.file-buttons').contains(clickedButton);
+        let buttonIsActive = clickedButton.classList.contains('active');
+
+        if (buttonInFileToggle) {
+            if (buttonIsActive) {
+                clickedButton.classList.remove('active');
+                this.getCodeBoxByParam(`[data-index="${this.activeIndex}"]`).classList.replace('active', 'hidden');
+            }
+            else {
+                /* Non-active button toggle Case */
+                this.shadowRoot.querySelector('.file-buttons .btn.active')?.classList.remove('active');
+                clickedButton.classList.add('active');
+
+                this.getCodeBoxByParam('.active')?.classList.replace('active', 'hidden');
+                this.getCodeBoxByParam(`[data-index="${this.activeIndex}"]`).classList.replace('hidden', 'active');
+            }
         }
+        else {
+            /* Handles result button toggle */
+            let webPreviewBox = this.shadowRoot.querySelector('.preview-box');
 
-        this.shadowRoot.querySelectorAll('.file-previews .btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
+            if (buttonIsActive) {
+                clickedButton.classList.remove('active');
+                webPreviewBox.classList.add('hidden');
+            }
+            else {
+                clickedButton.classList.add('active');
+                webPreviewBox.classList.remove('hidden');
+            }
+        }
+    }
 
-        clickedButton.classList.add('active');
-        this.shadowRoot.querySelector('.code-box.active').classList.replace('active', 'hidden');
-        this.shadowRoot.querySelector(`.code-box[data-index="${this.activeIndex}"]`).classList.replace('hidden', 'active');
+    /* Gets the current code snippet box based on parameter given */
+    getCodeBoxByParam(param) {
+        return this.shadowRoot.querySelector(`.code-box${param}`);
     }
 
     render(buttons, codeBoxes) {
         this.shadowRoot.innerHTML = `
             <style>
+                /* Containers */
                 .container {
-                    padding: 1rem;
                     background-color: #3e3e3e;
                     width: 100%;
                     height: 100%;
-                }
-                .hidden {
-                    display: none;
-                }
-                .selections {
                     display: flex;
-                    width: 100%;
-                    height: 100%;
+                    flex-direction: column;
+                    gap: 8px;
+                    padding: 1rem 0;
                 }
-                .file-previews {
+                .button-container {
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    width: 100%;
+                    height: fit-content;
+                }
+                .file-buttons {
                     display: flex;
                     align-items: center;
                     flex-wrap: wrap;
+                    padding-left: 8px;
                     gap: 1px;
                 }
-                .file-previews .btn {
+                .file-buttons .btn {
                     text-transform: uppercase;
                 }
-                .file-previews > :first-child {
+                .file-buttons > :first-child {
                     border-radius: 2px 0 0 2px;
                 }
-                .file-previews > :last-child {
+                .file-buttons > :last-child {
                     border-radius: 0 2px 2px 0;
                 }
+                .webcode-container {
+                    display: flex;
+                    width: 100%;
+                    height: 100%;
+                    overflow: hidden;
+                }
+                .webcode-container > * {
+                    flex: 1 1 50%;
+                    min-width: 0;
+                }
+                .result-button-container {
+                    display: flex;
+                    align-items: center;
+                }
+                
+                /* Buttons */
                 .btn {
                     padding: 10px 14px;
                     background-color: #666666;
@@ -126,73 +188,74 @@ class WebCodeEmbed extends HTMLElement {
                     font-family: Arial, sans-serif;
                     transition: 0.1s ease;
                 }
-               .btn:hover {
+                .btn:hover {
                     opacity: 0.9;
-               }
-               .btn.active {
+                }
+                .btn:active {
+                    -webkit-transform: translateY(1px);
+                    transform: translateY(1px);
+                }
+                .btn.active {
                     box-shadow: inset 0 3px 0 #ddd;
                     background-color: #b3b3b3;
                     color: #000;
-               }
-               .code-container {
-                    width: 50%; 
-                    display: flex; 
-                    flex-direction: column;
-                    gap: 8px;
-                    overflow: hidden;
-               }
-               
-               .result {
-                    display: flex;
-                    align-items: center;
-               }
-               .result .btn {
+                }
+                .result-button-container .btn {
                     border-radius: 2px;
-               }
-               .preview-box {
-                    width: 100% !important;
-                    height: 100% !important;
-               }
-               iframe {
-                    border: 0;
-               }
-               .code-box {
-                    background: #111;
-                    color: #fff;
-                    padding: 12px;
+                }
+                
+                /* Code Demo Box */
+                .code-box {
                     overflow: auto;
                     height: 100%;
-               }
-               .active {
-                    display: block;
-               }
-               pre {
+                    box-sizing: border-box;
+                    background-color: #121212;
+                }
+                pre {
                     margin: 0;
-               }
-               code {
-                    text-wrap: wrap;
-                    white-space: pre;
-               }
-               .btn:active {
-                    -webkit-transform: translateY(1px);
-                    transform: translateY(1px);
-               }
+                    padding: 15px;
+                    min-height: 100%;
+                    height: auto;
+                    background: transparent !important;
+                }
+                code {
+                    text-wrap: wrap !important;
+                    white-space: pre-wrap !important;
+                }
+                .hidden {
+                    display: none;
+                }
+                .active {
+                    display: block;
+                }
+
+                /* Web Preview Box */
+                .preview-box {
+                    width: 100%;
+                    height: 100%;
+                }
+                iframe {
+                    border: 0;
+                    width: 100%;
+                    height: 100%;
+                }
             </style>
             <div class="container" style="height: 500px">
-                <div class="selections">
-                    <div class="code-container">
-                        <div class="file-previews">
-                            ${buttons}
-                        </div>
-                        ${codeBoxes}
+                <div class="button-container">
+                    <div class="file-buttons">
+                        ${buttons}
                     </div>
-                    <div class="code-container">
-                        <div class="result">
-                            <a href="#" type="button" class="btn">Result</a>
-                        </div>
-                        <div class="preview-box">
-                            <iframe class="preview-box" title="Experiment 2" src="example/example.html" loading="lazy" allowtransparency="true"></iframe>
-                        </div>
+                    
+                    <div class="result-button-container">
+                        <button type="button" class="btn active">Result</a>
+                    </div>
+                </div>
+                
+                <div class="webcode-container">
+                    ${codeBoxes}
+                    
+                    <div class="preview-box">
+                        <iframe class="preview-box" title="Experiment 2" src="example/example.html" loading="lazy" allowtransparency="true"></iframe>
                     </div>
                 </div>
             </div>
@@ -202,13 +265,17 @@ class WebCodeEmbed extends HTMLElement {
     async connectedCallback() {
         await this.processFiles();
 
+        /* Creation of Buttons & Code snippets */
         const buttons = this.createButtons();
-        let codeBoxes = this.fileContents.map((content, index) => `<div class="code-box hidden" data-index="${index}"><pre><code>${content}</code></pre></div>`).join('');
+        let codeBoxes = this.fileContents.map((content, index) => `<div class="code-box hidden" data-index="${index}">${content}</div>`).join('');
+
         this.render(buttons, codeBoxes);
 
+        /* Make active a code-box by activeIndex */
         this.shadowRoot.querySelector(`.code-box[data-index="${this.activeIndex}"]`).classList.replace('hidden', 'active');
 
-        this.shadowRoot.querySelector('.file-previews').addEventListener('click', (e) => {
+        /* Event Listener to handle Button Clicks */
+        this.shadowRoot.querySelector('.button-container').addEventListener('click', (e) => {
             if (e.target.classList.contains('btn')) {
                 e.preventDefault();
                 this.toggleButton(e.target);
