@@ -1,17 +1,21 @@
-import { createHighlighter, codeToHtml} from "shiki/bundle/web";
+import { createHighlighter} from "shiki/bundle/web";
 
 class WebCodeEmbed extends HTMLElement {
     static get observedAttributes() {
-        return ['files', 'theme', 'langs']
+        return ['files', 'theme', 'langs', 'start-index', 'breakpoint']
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (name === 'files' && newValue)
-            this.codeBoxesConfig.files = newValue.split(' ').map(file => file.trim());
+            this.config.files = newValue.split(' ').map(file => file.trim());
         if (name === 'theme' && newValue)
             this.shikiConfig.theme = newValue;
         if (name === 'langs' && newValue)
             this.shikiConfig.langs = newValue.split(' ').map(lang => lang.trim());
+        if (name === 'start-index' && newValue)
+            this.config.activeIndex = parseInt(newValue);
+        if (name === 'breakpoint' && newValue)
+            this.attrs.breakpoint = newValue;
     }
 
     constructor() {
@@ -23,17 +27,28 @@ class WebCodeEmbed extends HTMLElement {
             langs: ['html', 'css', 'javascript'],
         }
 
-        this.codeBoxesConfig = {
+        this.config = {
             files: [],
             fileTypes: [],
             fileContents: [],
+            previewSrc: '',
             activeIndex: 0,
         }
 
-        this.breakpoint = '(max-width: 39.9375em)';
+        this.attrs = {
+            breakpoint: '39.9375em',
+        }
     }
 
-    /* Gets all files and stores into a variable */
+    // escapeHTML(str) {
+    //     return str.replace(/&/g, '&amp;')
+    //         .replace(/</g, '&lt;')
+    //         .replace(/>/g, '&gt;')
+    //         .replace(/"/g, '&quot;')
+    //         .replace(/'/g, '&#039;');
+    // }
+
+    // Gets all files and stores into a variable
     async processFiles() {
 
         // Create highlighter using shiki
@@ -43,77 +58,107 @@ class WebCodeEmbed extends HTMLElement {
         });
 
         try {
-            for (let file of this.codeBoxesConfig.files) {
+            for (let file of this.config.files) {
                 const fileType = file.slice(file.lastIndexOf('.') + 1);
-                this.codeBoxesConfig.fileTypes.push(fileType);
+
+                // Get html file for iframe (previewBox)
+                if (fileType === 'html')
+                    this.config.previewSrc = file;
+
+                this.config.fileTypes.push(fileType);
 
                 const response = await fetch(file);
                 const content = await response.text();
 
-                /* Highlight code using shiki */
+                // Highlight code using shiki
                 const html = this.highlighter.codeToHtml(content, {
                     lang: fileType,
                     theme: this.shikiConfig.theme,
                 })
 
-                this.codeBoxesConfig.fileContents.push(html);
+                this.config.fileContents.push(html);
             }
         } catch (e) {
             console.warn(`Error processing files: ${e.message}`)
         }
     }
 
-    /* Creates buttons as html inside array */
+    /*
+    * - Creates buttons per file submitted
+    * - Uses data-index to provide an identifier for active state enabling
+    * - Returns html string of buttons
+    * */
     createButtons() {
         let buttons = [];
 
-        for (let [index, type] of this.codeBoxesConfig.fileTypes.entries()) {
-            if (index === this.codeBoxesConfig.activeIndex)
-                buttons.push(`<button data-index="${index}" data-type="${type}" class="btn active">${type}</button>`)
+        for (let [index, type] of this.config.fileTypes.entries()) {
+            if (index === this.config.activeIndex)
+                buttons.push(`<button data-index="${index}" class="btn active">${type}</button>`)
             else
-                buttons.push(`<button data-index="${index}" data-type="${type}" class="btn">${type}</button>`)
+                buttons.push(`<button data-index="${index}" class="btn">${type}</button>`)
         }
 
         return buttons.join('');
     }
 
-    /* Function to handle button clicks based on active state for button */
+    /*
+     * Handles button clicks for file and result buttons
+     *
+     * Mobile: Clicking a button hides the other panel (only one visible at a time)
+     * Desktop: Buttons toggle independently, but at least one panel stays visible
+     */
     toggleButton(clickedButton) {
-        this.codeBoxesConfig.activeIndex = parseInt(clickedButton.dataset.index);
+        this.config.activeIndex = parseInt(clickedButton.dataset.index);
 
-        let buttonInFileToggle = !!this.shadowRoot.querySelector('.file-buttons').contains(clickedButton);
-        let buttonIsActive = clickedButton.classList.contains('active');
+        const buttonInFileToggle = !!this.shadowRoot.querySelector('.file-buttons').contains(clickedButton);
+        const buttonIsActive = clickedButton.classList.contains('active');
+        const isMobile = !window.matchMedia(`(min-width: ${this.attrs.breakpoint})`).matches;
+        const totalActiveButtons = this.shadowRoot.querySelectorAll('.btn.active').length;
 
         if (buttonInFileToggle) {
-            if (buttonIsActive) {
-                clickedButton.classList.remove('active');
-                this.getCodeBoxByParam(`[data-index="${this.codeBoxesConfig.activeIndex}"]`).classList.replace('active', 'hidden');
-            }
-            else {
-                /* Non-active button toggle Case */
+            // File button clicked - only switch if not already active
+            if (!buttonIsActive) {
+                // Switch to codeBox tied to toggled button
                 this.shadowRoot.querySelector('.file-buttons .btn.active')?.classList.remove('active');
                 clickedButton.classList.add('active');
 
                 this.getCodeBoxByParam('.active')?.classList.replace('active', 'hidden');
-                this.getCodeBoxByParam(`[data-index="${this.codeBoxesConfig.activeIndex}"]`).classList.replace('hidden', 'active');
+                this.getCodeBoxByParam(`[data-index="${this.config.activeIndex}"]`).classList.replace('hidden', 'active');
+            }
+            else if (!isMobile && totalActiveButtons === 2){
+                clickedButton.classList.remove('active');
+                this.getCodeBoxByParam(`[data-index="${this.config.activeIndex}"]`).classList.replace('active', 'hidden');
             }
         }
         else {
-            /* Handles result button toggle */
-            let webPreviewBox = this.shadowRoot.querySelector('.preview-box');
+            const previewBox = this.shadowRoot.querySelector('.preview-box');
 
-            if (buttonIsActive) {
-                clickedButton.classList.remove('active');
-                webPreviewBox.classList.add('hidden');
-            }
-            else {
+            // Result button clicked - only show if not already active
+            if (!buttonIsActive) {
                 clickedButton.classList.add('active');
-                webPreviewBox.classList.remove('hidden');
+                previewBox.classList.remove('hidden');
+            }
+            else if (!isMobile && totalActiveButtons === 2){
+                clickedButton.classList.remove('active');
+                previewBox.classList.add('hidden');
+            }
+        }
+
+        // Mobile Version (only one box visible at a time)
+        if (isMobile && !buttonIsActive) {
+            if (buttonInFileToggle) {
+                // Hide previewBox when button tied to file is toggled
+                this.shadowRoot.querySelector('.frame-button-container .btn').classList.remove('active');
+                this.shadowRoot.querySelector('.preview-box').classList.add('hidden');
+            } else {
+                // Hide codeBox when result button is toggled
+                this.shadowRoot.querySelector('.file-buttons .btn.active')?.classList.remove('active');
+                this.getCodeBoxByParam('.active')?.classList.replace('active', 'hidden');
             }
         }
     }
 
-    /* Gets the current code snippet box based on parameter given */
+    // Get active code box based on a parameter
     getCodeBoxByParam(param) {
         return this.shadowRoot.querySelector(`.code-box${param}`);
     }
@@ -130,12 +175,6 @@ class WebCodeEmbed extends HTMLElement {
                     flex-direction: column;
                     gap: 8px;
                     padding: 1rem 0;
-                }
-                .button-container {
-                    display: grid;
-                    grid-template-columns: repeat(2, minmax(0, 1fr));
-                    width: 100%;
-                    height: fit-content;
                 }
                 .file-buttons {
                     display: flex;
@@ -155,17 +194,34 @@ class WebCodeEmbed extends HTMLElement {
                 }
                 .webcode-container {
                     display: flex;
+                    flex-direction: column;
                     width: 100%;
                     height: 100%;
                     overflow: hidden;
                 }
-                .webcode-container > * {
-                    flex: 1 1 50%;
-                    min-width: 0;
+                .button-container {
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                }
+                @media (min-width: ${this.attrs.breakpoint}) {
+                    .webcode-container {
+                        flex-direction: row;
+                    }
+                    .webcode-container > * {
+                        flex: 1 1 50%;
+                        min-width: 0;
+                    }
+                    .button-container {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        width: 100%;
+                        gap: 0;
+                        height: fit-content;
+                    }
                 }
                 .frame-button-container {
                     display: flex;
-                    justify-content: space-between;
                     align-items: center;
                     padding-right: 8px;
                 }
@@ -243,7 +299,6 @@ class WebCodeEmbed extends HTMLElement {
                     
                     <div class="frame-button-container">
                         <button type="button" class="btn active">Result</button>
-                        <button type="button" class="btn">Rerun</button>
                     </div>
                 </div>
                 
@@ -251,7 +306,7 @@ class WebCodeEmbed extends HTMLElement {
                     ${codeBoxes}
                     
                     <div class="preview-box">
-                        <iframe class="preview-box" title="Experiment 2" src="example/example.html" loading="lazy" allowtransparency="true"></iframe>
+                        <iframe class="preview-box" title="Experiment 2" src="${this.config.previewSrc}" loading="lazy" allowtransparency="true"></iframe>
                     </div>
                 </div>
             </div>
@@ -261,16 +316,24 @@ class WebCodeEmbed extends HTMLElement {
     async connectedCallback() {
         await this.processFiles();
 
-        /* Creation of Buttons & Code snippets */
+        // Creation of Buttons & Code snippets
         const buttons = this.createButtons();
-        let codeBoxes = this.codeBoxesConfig.fileContents.map((content, index) => `<div class="code-box hidden" data-index="${index}">${content}</div>`).join('');
+        let codeBoxes = this.config.fileContents.map((content, index) => `<div class="code-box hidden" data-index="${index}">${content}</div>`).join('');
 
         this.render(buttons, codeBoxes);
 
-        /* Make active a code-box by activeIndex */
-        this.shadowRoot.querySelector(`.code-box[data-index="${this.codeBoxesConfig.activeIndex}"]`).classList.replace('hidden', 'active');
+        // Define result button state by screen size
+        const isMobile = !window.matchMedia(`(min-width: ${this.attrs.breakpoint})`).matches;
 
-        /* Event Listener to handle Button Clicks */
+        // When mobile, hide code and keep preview box displayed
+        if (isMobile)
+            this.shadowRoot.querySelector('.file-buttons button.active').classList.remove('active');
+
+        // Make active a code-box by activeIndex
+        else
+            this.shadowRoot.querySelector(`.code-box[data-index="${this.config.activeIndex}"]`).classList.replace('hidden', 'active');
+
+        // Event Listener to handle Button Clicks
         this.shadowRoot.querySelector('.button-container').addEventListener('click', (e) => {
             if (e.target.classList.contains('btn')) {
                 e.preventDefault();
