@@ -7,37 +7,30 @@ class WebCodeEmbed extends HTMLElement {
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (name === 'files' && newValue)
-            this.files = newValue.split(' ').map(file => file.trim());
+            this.codeBoxesConfig.files = newValue.split(' ').map(file => file.trim());
         if (name === 'theme' && newValue)
-            this.theme = newValue;
+            this.shikiConfig.theme = newValue;
         if (name === 'langs' && newValue)
-            this.langs = newValue.split(' ').map(lang => lang.trim());
+            this.shikiConfig.langs = newValue.split(' ').map(lang => lang.trim());
     }
 
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
 
-        this.files = [];
-        this.fileTypes = [];
-        this.fileContents = [];
-        this.activeIndex = 0;
-        this.highlighter = null;
-        this.theme = 'vitesse-dark';
-        this.langs = ['html', 'css', 'javascript'];
-
-        this.defaults = {
-            breakpoint: '(max-width: 39.9375em)',
-            codePreviewWidth: "50%",
+        this.shikiConfig = {
+            theme: 'vitesse-dark',
+            langs: ['html', 'css', 'javascript'],
         }
-    }
 
-    escapeHTML(str) {
-        return str.replace(/&/g, '&amp;')
-                  .replace(/</g, '&lt;')
-                  .replace(/>/g, '&gt;')
-                  .replace(/"/g, '&quot;')
-                  .replace(/'/g, '&#039;');
+        this.codeBoxesConfig = {
+            files: [],
+            fileTypes: [],
+            fileContents: [],
+            activeIndex: 0,
+        }
+
+        this.breakpoint = '(max-width: 39.9375em)';
     }
 
     /* Gets all files and stores into a variable */
@@ -45,14 +38,14 @@ class WebCodeEmbed extends HTMLElement {
 
         // Create highlighter using shiki
         this.highlighter = await createHighlighter({
-            themes: [this.theme],
-            langs: this.langs,
+            themes: [this.shikiConfig.theme],
+            langs: this.shikiConfig.langs,
         });
 
         try {
-            for (let file of this.files) {
+            for (let file of this.codeBoxesConfig.files) {
                 const fileType = file.slice(file.lastIndexOf('.') + 1);
-                this.fileTypes.push(fileType);
+                this.codeBoxesConfig.fileTypes.push(fileType);
 
                 const response = await fetch(file);
                 const content = await response.text();
@@ -60,10 +53,10 @@ class WebCodeEmbed extends HTMLElement {
                 /* Highlight code using shiki */
                 const html = this.highlighter.codeToHtml(content, {
                     lang: fileType,
-                    theme: this.theme,
+                    theme: this.shikiConfig.theme,
                 })
 
-                this.fileContents.push(html);
+                this.codeBoxesConfig.fileContents.push(html);
             }
         } catch (e) {
             console.warn(`Error processing files: ${e.message}`)
@@ -74,8 +67,8 @@ class WebCodeEmbed extends HTMLElement {
     createButtons() {
         let buttons = [];
 
-        for (let [index, type] of this.fileTypes.entries()) {
-            if (index === this.activeIndex)
+        for (let [index, type] of this.codeBoxesConfig.fileTypes.entries()) {
+            if (index === this.codeBoxesConfig.activeIndex)
                 buttons.push(`<button data-index="${index}" data-type="${type}" class="btn active">${type}</button>`)
             else
                 buttons.push(`<button data-index="${index}" data-type="${type}" class="btn">${type}</button>`)
@@ -86,7 +79,7 @@ class WebCodeEmbed extends HTMLElement {
 
     /* Function to handle button clicks based on active state for button */
     toggleButton(clickedButton) {
-        this.activeIndex = parseInt(clickedButton.dataset.index);
+        this.codeBoxesConfig.activeIndex = parseInt(clickedButton.dataset.index);
 
         let buttonInFileToggle = !!this.shadowRoot.querySelector('.file-buttons').contains(clickedButton);
         let buttonIsActive = clickedButton.classList.contains('active');
@@ -94,7 +87,7 @@ class WebCodeEmbed extends HTMLElement {
         if (buttonInFileToggle) {
             if (buttonIsActive) {
                 clickedButton.classList.remove('active');
-                this.getCodeBoxByParam(`[data-index="${this.activeIndex}"]`).classList.replace('active', 'hidden');
+                this.getCodeBoxByParam(`[data-index="${this.codeBoxesConfig.activeIndex}"]`).classList.replace('active', 'hidden');
             }
             else {
                 /* Non-active button toggle Case */
@@ -102,7 +95,7 @@ class WebCodeEmbed extends HTMLElement {
                 clickedButton.classList.add('active');
 
                 this.getCodeBoxByParam('.active')?.classList.replace('active', 'hidden');
-                this.getCodeBoxByParam(`[data-index="${this.activeIndex}"]`).classList.replace('hidden', 'active');
+                this.getCodeBoxByParam(`[data-index="${this.codeBoxesConfig.activeIndex}"]`).classList.replace('hidden', 'active');
             }
         }
         else {
@@ -170,9 +163,11 @@ class WebCodeEmbed extends HTMLElement {
                     flex: 1 1 50%;
                     min-width: 0;
                 }
-                .result-button-container {
+                .frame-button-container {
                     display: flex;
+                    justify-content: space-between;
                     align-items: center;
+                    padding-right: 8px;
                 }
                 
                 /* Buttons */
@@ -200,7 +195,7 @@ class WebCodeEmbed extends HTMLElement {
                     background-color: #b3b3b3;
                     color: #000;
                 }
-                .result-button-container .btn {
+                .frame-button-container .btn {
                     border-radius: 2px;
                 }
                 
@@ -246,8 +241,9 @@ class WebCodeEmbed extends HTMLElement {
                         ${buttons}
                     </div>
                     
-                    <div class="result-button-container">
-                        <button type="button" class="btn active">Result</a>
+                    <div class="frame-button-container">
+                        <button type="button" class="btn active">Result</button>
+                        <button type="button" class="btn">Rerun</button>
                     </div>
                 </div>
                 
@@ -267,12 +263,12 @@ class WebCodeEmbed extends HTMLElement {
 
         /* Creation of Buttons & Code snippets */
         const buttons = this.createButtons();
-        let codeBoxes = this.fileContents.map((content, index) => `<div class="code-box hidden" data-index="${index}">${content}</div>`).join('');
+        let codeBoxes = this.codeBoxesConfig.fileContents.map((content, index) => `<div class="code-box hidden" data-index="${index}">${content}</div>`).join('');
 
         this.render(buttons, codeBoxes);
 
         /* Make active a code-box by activeIndex */
-        this.shadowRoot.querySelector(`.code-box[data-index="${this.activeIndex}"]`).classList.replace('hidden', 'active');
+        this.shadowRoot.querySelector(`.code-box[data-index="${this.codeBoxesConfig.activeIndex}"]`).classList.replace('hidden', 'active');
 
         /* Event Listener to handle Button Clicks */
         this.shadowRoot.querySelector('.button-container').addEventListener('click', (e) => {
