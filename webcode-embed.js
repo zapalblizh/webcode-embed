@@ -43,14 +43,6 @@ class WebCodeEmbed extends HTMLElement {
         }
     }
 
-    // escapeHTML(str) {
-    //     return str.replace(/&/g, '&amp;')
-    //         .replace(/</g, '&lt;')
-    //         .replace(/>/g, '&gt;')
-    //         .replace(/"/g, '&quot;')
-    //         .replace(/'/g, '&#039;');
-    // }
-
     // Gets all files and stores into a variable
     async processFiles() {
 
@@ -308,9 +300,7 @@ class WebCodeEmbed extends HTMLElement {
                 <div class="webcode-container">
                     ${codeBoxes}
                     
-                    <div class="preview-box">
-                        <iframe class="preview-box" title="Experiment 2" src="${this.config.previewSrc}" loading="lazy" allowtransparency="true"></iframe>
-                    </div>
+                    <iframe class="preview-box" title="Preview Box" src="${this.config.previewSrc}" loading="lazy" allowtransparency="true"></iframe>
                 </div>
             </div>
         `;
@@ -325,6 +315,10 @@ class WebCodeEmbed extends HTMLElement {
 
         this.render(buttons, codeBoxes);
 
+        if (this.config.previewSrc === '') {
+            this.shadowRoot.querySelector('.preview-box').classList.add('hidden');
+            this.shadowRoot.querySelector('.frame-button-container').classList.add('hidden');
+        }
         // Define result button state by screen size
         const isMobile = !window.matchMedia(`(min-width: ${this.attrs.breakpoint})`).matches;
 
