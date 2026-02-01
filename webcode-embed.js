@@ -16,6 +16,8 @@ class WebCodeEmbed extends HTMLElement {
             this.config.activeIndex = parseInt(newValue);
         if (name === 'breakpoint' && newValue)
             this.attrs.breakpoint = newValue;
+        if (name === 'height' && newValue)
+            this.attrs.height = newValue;
     }
 
     constructor() {
@@ -37,6 +39,7 @@ class WebCodeEmbed extends HTMLElement {
 
         this.attrs = {
             breakpoint: '39.9375em',
+            height: '500px',
         }
     }
 
@@ -170,7 +173,7 @@ class WebCodeEmbed extends HTMLElement {
                 .container {
                     background-color: #3e3e3e;
                     width: 100%;
-                    height: 100%;
+                    height: ${this.attrs.height};
                     display: flex;
                     flex-direction: column;
                     gap: 8px;
@@ -291,7 +294,7 @@ class WebCodeEmbed extends HTMLElement {
                     height: 100%;
                 }
             </style>
-            <div class="container" style="height: 500px">
+            <div class="container">
                 <div class="button-container">
                     <div class="file-buttons">
                         ${buttons}
