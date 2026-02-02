@@ -28,8 +28,10 @@
     "url": "https://zapparov.dev"
   },
   "homepage": "https://github.com/zapalblizh/webcode-embed#readme",
-  "devDependencies": {
-    "esbuild": "^0.27.2",
+  "dependencies": {
     "shiki": "^3.22.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2"
   }
 }
