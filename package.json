@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "description": "A small web component for code demos with fallback in case of disabled JavaScript in browser.",
-  "main": "webcode-embed.js",
+  "main": "dist/webcode-embed.min.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "start": "npx esbuild webcode-embed.js --bundle --outfile=webcode-embed.bundle.js --format=iife --watch --servedir=."
+    "start": "npx esbuild webcode-embed.js --bundle --outfile=dist/webcode-embed.min.js --format=iife --minify --watch --servedir=.",
+    "build": "npx esbuild webcode-embed.js --bundle --outfile=dist/webcode-embed.min.js --format=iife --minify && gzip -9 -c dist/webcode-embed.min.js > dist/webcode-embed.min.js.gz && brotli -9 -c dist/webcode-embed.min.js > dist/webcode-embed.min.js.br"
   },
   "repository": {
     "type": "git",

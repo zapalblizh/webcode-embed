@@ -1,17 +1,15 @@
-import { createHighlighter} from "shiki/bundle/web";
+import { codeToHtml } from "shiki/bundle/web";
 
 class WebCodeEmbed extends HTMLElement {
     static get observedAttributes() {
-        return ['files', 'theme', 'langs', 'start-index', 'breakpoint']
+        return ['files', 'theme', 'start-index', 'breakpoint', 'height']
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (name === 'files' && newValue)
             this.config.files = newValue.split(' ').map(file => file.trim());
         if (name === 'theme' && newValue)
-            this.shikiConfig.theme = newValue;
-        if (name === 'langs' && newValue)
-            this.shikiConfig.langs = newValue.split(' ').map(lang => lang.trim());
+            this.config.theme = newValue;
         if (name === 'start-index' && newValue)
             this.config.activeIndex = parseInt(newValue);
         if (name === 'breakpoint' && newValue)
@@ -24,17 +22,13 @@ class WebCodeEmbed extends HTMLElement {
         super();
         this.attachShadow({ mode: 'open' });
 
-        this.shikiConfig = {
-            theme: 'vitesse-dark',
-            langs: ['html', 'css', 'javascript'],
-        }
-
         this.config = {
             files: [],
             fileTypes: [],
             fileContents: [],
             previewSrc: '',
             activeIndex: 0,
+            theme: 'vitesse-dark',
         }
 
         this.attrs = {
@@ -45,13 +39,6 @@ class WebCodeEmbed extends HTMLElement {
 
     // Gets all files and stores into a variable
     async processFiles() {
-
-        // Create highlighter using shiki
-        this.highlighter = await createHighlighter({
-            themes: [this.shikiConfig.theme],
-            langs: this.shikiConfig.langs,
-        });
-
         try {
             for (let file of this.config.files) {
                 const fileType = file.slice(file.lastIndexOf('.') + 1);
@@ -66,9 +53,9 @@ class WebCodeEmbed extends HTMLElement {
                 const content = await response.text();
 
                 // Highlight code using shiki
-                const html = this.highlighter.codeToHtml(content, {
+                const html = await codeToHtml(content, {
                     lang: fileType,
-                    theme: this.shikiConfig.theme,
+                    theme: this.config.theme,
                 })
 
                 this.config.fileContents.push(html);
@@ -161,6 +148,10 @@ class WebCodeEmbed extends HTMLElement {
     render(buttons, codeBoxes) {
         this.shadowRoot.innerHTML = `
             <style>
+                :host {
+                    display: block;
+                    min-height: ${this.attrs.height};
+                }
                 /* Containers */
                 .container {
                     background-color: #3e3e3e;
@@ -262,7 +253,6 @@ class WebCodeEmbed extends HTMLElement {
                     padding: 15px;
                     min-height: 100%;
                     height: auto;
-                    background: transparent !important;
                 }
                 code {
                     text-wrap: wrap !important;
@@ -300,7 +290,9 @@ class WebCodeEmbed extends HTMLElement {
                 <div class="webcode-container">
                     ${codeBoxes}
                     
-                    <iframe class="preview-box" title="Preview Box" src="${this.config.previewSrc}" loading="lazy" allowtransparency="true"></iframe>
+                    <div class="preview-box">
+                        <iframe title="Preview Box" src="${this.config.previewSrc}" loading="lazy" allowtransparency="true"></iframe>
+                    </div>
                 </div>
             </div>
         `;
@@ -315,20 +307,23 @@ class WebCodeEmbed extends HTMLElement {
 
         this.render(buttons, codeBoxes);
 
-        if (this.config.previewSrc === '') {
-            this.shadowRoot.querySelector('.preview-box').classList.add('hidden');
-            this.shadowRoot.querySelector('.frame-button-container').classList.add('hidden');
+        const hasPreview = this.config.previewSrc !== '';
+
+        // Initialization
+        if (!hasPreview) {
+            this.shadowRoot.querySelector('.preview-box')?.classList.add('hidden');
+            this.shadowRoot.querySelector('.frame-button-container')?.classList.add('hidden');
         }
+
         // Define result button state by screen size
         const isMobile = !window.matchMedia(`(min-width: ${this.attrs.breakpoint})`).matches;
 
-        // When mobile, hide code and keep preview box displayed
-        if (isMobile)
-            this.shadowRoot.querySelector('.file-buttons button.active').classList.remove('active');
-
-        // Make active a code-box by activeIndex
+        // When mobile and has preview, hide code and keep preview box displayed
+        // When mobile with no preview, show code
+        if (isMobile && hasPreview)
+            this.shadowRoot.querySelector('.file-buttons button.active')?.classList.remove('active');
         else
-            this.shadowRoot.querySelector(`.code-box[data-index="${this.config.activeIndex}"]`).classList.replace('hidden', 'active');
+            this.shadowRoot.querySelector(`.code-box[data-index="${this.config.activeIndex}"]`)?.classList.replace('hidden', 'active');
 
         // Event Listener to handle Button Clicks
         this.shadowRoot.querySelector('.button-container').addEventListener('click', (e) => {

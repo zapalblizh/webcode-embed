@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebCode Embed Demo</title>
-    <script type="module" defer src="webcode-embed.bundle.js"></script>
+    <meta name="description" content="A demo page for the WebCode Embed web component">
+    <script type="module" defer src="dist/webcode-embed.min.js"></script>
 
     <style>
         * {
@@ -35,7 +36,7 @@
             display: inline-block;
             margin-top: 0.5rem;
             font-size: 0.85rem;
-            color: #999;
+            color: #666;
             font-style: italic;
         }
 
@@ -68,103 +69,34 @@
         <span class="note">Note: Example code generated with AI assistance.</span>
     </p>
 
+    <main>
+        <!-- Example 1: Basic Usage -->
+        <section class="demo-section">
+            <h2>1. Basic Example</h2>
+            <p>HTML + CSS with default theme (vitesse-dark)</p>
+            <webcode-embed
+                    files="/example/example.html /example/example.css /example/example.js">
+            </webcode-embed>
+        </section>
 
-    <!-- Example 1: Basic Usage -->
-    <section class="demo-section">
-        <h2>1. Basic Example</h2>
-        <p>HTML + CSS with default theme (vitesse-dark)</p>
-        <webcode-embed
-            files="/example/example.html /example/example.css">
-        </webcode-embed>
-    </section>
+        <!-- Example 2: No HTML File -->
+        <section class="demo-section">
+            <h2>2. No HTML File</h2>
+            <p>JavaScript and CSS only - no preview iframe shown</p>
+            <webcode-embed
+                    files="/example/utils.js /example/styles.css">
+            </webcode-embed>
+        </section>
 
-    <!-- Example 2: Custom Theme -->
-    <section class="demo-section">
-        <h2>2. Custom Theme</h2>
-        <p>Same files with GitHub Dark theme</p>
-        <webcode-embed
-            files="/example/example.html /example/example.css"
-            theme="github-dark">
-        </webcode-embed>
-    </section>
-
-    <!-- Example 3: Different Start Index -->
-    <section class="demo-section">
-        <h2>3. Custom Start Index</h2>
-        <p>Starting with CSS file (index 1) instead of HTML</p>
-        <webcode-embed
-            files="/example/example.html /example/example.css"
-            start-index="1"
-            theme="nord">
-        </webcode-embed>
-    </section>
-
-    <!-- Example 4: Python + JSON -->
-    <section class="demo-section">
-        <h2>4. Python + JSON</h2>
-        <p>Python Flask API with JSON configuration (custom langs attribute)</p>
-        <webcode-embed
-            files="/example/app.py /example/config.json"
-            langs="python json"
-            theme="github-dark">
-        </webcode-embed>
-    </section>
-
-    <!-- Example 5: TypeScript + React -->
-    <section class="demo-section">
-        <h2>5. TypeScript + React</h2>
-        <p>React component with TypeScript type definitions</p>
-        <webcode-embed
-            files="/example/App.tsx /example/types.ts"
-            langs="tsx typescript"
-            theme="nord"
-            start-index="0">
-        </webcode-embed>
-    </section>
-
-    <!-- Example 6: Custom Breakpoint -->
-    <section class="demo-section">
-        <h2>6. Custom Breakpoint</h2>
-        <p>Responsive layout with mobile view activating at 60em</p>
-        <webcode-embed
-            files="/example/responsive.html /example/responsive.css"
-            breakpoint="60em"
-            theme="monokai">
-        </webcode-embed>
-    </section>
-
-    <!-- Example 7: Custom Height -->
-    <section class="demo-section">
-        <h2>7. Custom Height</h2>
-        <p>Tall content page with 700px height for better viewing</p>
-        <webcode-embed
-            files="/example/tall-page.html /example/tall-page.css"
-            height="700px"
-            theme="vitesse-dark">
-        </webcode-embed>
-    </section>
-
-    <!-- Example 8: No HTML File -->
-    <section class="demo-section">
-        <h2>8. No HTML File</h2>
-        <p>JavaScript and CSS only - no preview iframe shown</p>
-        <webcode-embed
-            files="/example/utils.js /example/styles.css"
-            theme="one-dark-pro">
-        </webcode-embed>
-    </section>
-
-    <!-- Example 9: With Fallback Content -->
-    <section class="demo-section">
-        <h2>9. With Fallback Content</h2>
-        <p>Displays fallback message if JavaScript is disabled</p>
-        <webcode-embed
-            files="/example/example.html /example/example.css"
-            theme="aurora-x">
-            <div style="text-align: center; padding: 50px; background: #f0f0f0; border-radius: 8px;">
-                <p style="color: #666; font-weight: 600;">⚠️ Please enable JavaScript to view code previews</p>
-            </div>
-        </webcode-embed>
-    </section>
+        <!-- Example 3: Custom Height -->
+        <section class="demo-section">
+            <h2>3. Custom Height</h2>
+            <p>Custom height with 700px for better viewing</p>
+            <webcode-embed
+                    files="/example/tall-page.html /example/tall-page.css"
+                    height="700px">
+            </webcode-embed>
+        </section>
+    </main>
 </body>
 </html>
