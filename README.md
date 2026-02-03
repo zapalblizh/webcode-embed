@@ -2,13 +2,7 @@
 
 A lightweight web component for displaying code snippets with syntax highlighting alongside a live preview in an iframe. Design heavily inspired by [Codepen](https://codepen.io/).
 
-
-## Quick Start
-Upcoming...
-
-## Demo
-
-[View Live Demo](https://yourdemo.com) <!-- TODO: Add demo link -->
+## Configuration
 
 ## Features
 
@@ -27,13 +21,11 @@ Upcoming...
   - Without HTML preview: Shows code (no hiding on mobile)
 
 ## Installation
+As of now, the component is a WIP for a production ready release. 
 
-### NPM (Coming Soon)
+You may clone the repo and get the `webcode-embed.min.js` file if you choose to use it in your own project, or modify it.
 
-```bash
-npm install webcode-embed
-```
-
+Add the following script tag to your pages to use the web component:
 ```html
 <script type="module" src="path/to/webcode-embed.min.js"></script>
 ```
